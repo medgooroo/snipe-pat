@@ -136,18 +136,23 @@ if (isset($_POST['testPassed'])) {
     // create a maintenance with the fields saved as a note.
     // get the assetID from the tag.
     $allCustomFields = json_decode(curlStuff("/api/v1/fields", "GET", null)); // get all custom definitions
-
+    $apiMaintFields = array();
+    $apiAssetFields = array();
+    
     $assetObj = json_decode(curlStuff("/api/v1/hardware/bytag/" . $_POST['assetID'], "GET", null));
     $today = new DateTime();
-    $apiFields = array(); // clear request the options
-    $apiFields['title'] = "Test";
-    $apiFields['asset_id'] = $assetObj->id;
-    $apiFields['supplier_id'] = $_POST['supplier'];
-    $apiFields['start_date'] = $today->format('Y-m-d');
-    $apiFields['completion_date'] = $today->format('Y-m-d');
-    $apiFields['asset_maintenance_type'] = "Test";
+    $apiMaintFields = array(); // clear request the options
+    $apiMaintFields['title'] = "Test";
+    $apiMaintFields['asset_id'] = $assetObj->id;
+    $apiMaintFields['supplier_id'] = $_POST['supplier'];
+
+    $apiMaintFields['start_date'] = $today->format('Y-m-d');
+    $apiMaintFields['completion_date'] = $today->format('Y-m-d');
+    $apiMaintFields['asset_maintenance_type'] = "Test";
+    
     foreach ($_POST as $key => $value) {
         if (strpos($key, "_test_") !== False) { // custom fields we want to use are prepended with _test_
+           $apiAssetFields[$key] = $value; // copy custom values to the asset itself
             foreach ($allCustomFields->rows as $fieldName => $currFieldDefinition) {
                 if ($currFieldDefinition->db_column_name == $key) { // convert back from db_names to human names
                     $maintNotes = $maintNotes . $currFieldDefinition->name . ":" . $value . " ";
@@ -156,10 +161,10 @@ if (isset($_POST['testPassed'])) {
         }
     }
     $maintNotes = str_replace("_test_", "", $maintNotes); // 
-    $apiFields['notes'] = $maintNotes;
-    $response = json_decode(curlStuff("/api/v1/maintenances", "POST", $apiFields));
-    var_dump($response);
-    echo ($response->messages);
+    $apiMaintFields['notes'] = $maintNotes;
+    $response = curlStuff("/api/v1/hardware/" . $assetObj->id ."?". http_build_query($apiAssetFields), "PATCH", null);
+    $response = json_decode(curlStuff("/api/v1/maintenances", "POST", $apiMaintFields));
+
 }
 
 
